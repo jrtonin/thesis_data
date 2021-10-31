@@ -1,0 +1,400 @@
+---
+title: "Brazilian airline market data cleaning"
+author: "João Ricardo Tonin"
+date: "31/10/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, 
+                      comment = NA,
+                      warning = FALSE,
+                      error = FALSE, 
+                      message = FALSE,
+                      tidy = TRUE)
+
+knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
+print(getwd())
+dwdir = print(getwd())
+
+{ 
+  # Check if the packages that we need are installed
+  want = c("tidyverse", "plm", "texreg", "lmtest", "knitr", "data.table")
+  have = want %in% rownames(installed.packages())
+  # Install the packages that we miss
+  if ( any(!have) ) { install.packages( want[!have] ) }
+  # Load the packages
+  junk <- lapply(want, library, character.only = T)
+  # Remove the objects we created
+  rm(have, want, junk)
+} # Import packages
+
+```
+
+```{r cleanning, include = FALSE}
+
+# setting directories
+dwcomraw = paste0(dwdir, "/data/combined/raw")
+dwcomrds = paste0(dwdir, "/data/combined/rds")
+dwfinrds = paste0(dwdir, "/data/final")
+dwbasraw = paste0(dwdir, "/data/basic/raw")
+dwbasrds = paste0(dwdir, "/data/basic/rds")
+dwpriraw = paste0(dwdir, "/data/prices/raw")
+dwprirds = paste0(dwdir, "/data/prices/rds")
+
+{
+  # setting the directory  
+  setwd(dwcomraw) 
+  
+  # creating a list of .CSV databases
+  temp = list.files(pattern = "*.txt") 
+  
+  for (file in 1:36){ 
+
+    # setting the directory    
+    setwd(dwcomraw) 
+    
+    # get the read_delim function working
+    vfiles = read_delim(temp[file], ";", 
+                        escape_double = FALSE, 
+                        locale = locale(decimal_mark = ",", 
+                                        grouping_mark = ".", 
+                                        encoding = "ISO-8859-1"), 
+                        trim_ws = TRUE)
+    
+    # organizing database
+    COMBINADA = vfiles %>% 
+      mutate(seat_com = nr_passag_pagos) %>% ungroup() %>%
+      select("id_empresa", "nr_voo", "hr_partida_real", "dt_partida_real", 
+             "sg_icao_origem", "sg_icao_destino", "hr_chegada_real", "dt_chegada_real",
+             "seat_com")
+      
+    # setting the directory      
+    setwd(dwcomrds) 
+    
+    # Saving a single object to a file
+    saveRDS(COMBINADA, paste(file, ".rds"))
+ 
+  } # Creating looping for .txt files
+  
+  {
+    # Step 1: set the working directory (where files are saved)
+    setwd(dwcomrds) 
+    
+    # Step 2: get all the right file names
+    file_names = list.files(getwd())
+    file_names = file_names[grepl(".rds",file_names)]
+    
+    # Step 3: get the read.csv function working
+    files = readRDS("1 .rds")
+    
+    # Step 4: use lapply to apply the read.csv function to all values of file_names
+    files = lapply(file_names, readRDS)
+    list = files
+    files = rbindlist(files, fill = TRUE)
+    
+    # check structure of new data set
+    str(files)
+    
+    # rename
+    COMBINADA = files
+    
+    
+  } # Join databases
+  
+  # Dropping unnecessary databases
+  remove(list = c("files", "file_names"))
+  
+  # transform NA to 0
+  COMBINADA$seat_com[is.na(COMBINADA$seat_com)] = 0
+  
+  COMBINADA = COMBINADA %>% group_by(id_empresa, nr_voo, hr_partida_real, dt_partida_real,
+                                 sg_icao_origem, sg_icao_destino, hr_chegada_real, 
+                                 dt_chegada_real) %>%
+    dplyr::summarise(seat_com = sum(seat_com))
+  
+  # renaming database
+  COMBINADA_Essay_II = COMBINADA
+  
+  # setting the directory      
+  setwd(dwfinrds) 
+  
+  # Saving a single object to a file
+  saveRDS(COMBINADA_Essay_II, "COMBINADA_Essay_II.rds")
+
+} # Transforming Combinated database
+
+{
+  # setting the directory  
+  setwd(dwbasraw) 
+  
+  # creating a list of .CSV databases
+  temp = list.files(pattern = "*.txt") 
+  
+  for (file in 1:36){ 
+    
+    # setting the directory    
+    setwd(dwbasraw) 
+    
+    # get the read_delim function working
+      vfiles = read_delim(temp[file], ";", 
+                          escape_double = FALSE, 
+                          locale = locale(decimal_mark = ",", 
+                                          grouping_mark = ".", 
+                                          encoding = "ISO-8859-1"), 
+                          trim_ws = TRUE)
+    
+    # organizing database
+    BASICA = vfiles %>% 
+      mutate(seat_bas = nr_passag_pagos) %>% ungroup() %>%
+      select("id_empresa", "nr_voo", "hr_partida_real", "dt_partida_real", 
+             "sg_icao_origem", "sg_icao_destino", "hr_chegada_real", "dt_chegada_real", 
+             "sg_empresa_icao", "id_di", "ds_di", 
+             "ds_grupo_di", "nr_ano_referencia", "nr_ano_mes_referencia", 
+             "ds_tipo_linha", "ds_natureza_etapa", "lt_combustivel", "nr_assentos_ofertados",
+             "kg_payload", "km_distancia", "seat_bas", "nr_passag_gratis", 
+             "kg_bagagem_livre", "kg_bagagem_excesso","kg_carga_paga", "kg_carga_gratis",
+             "kg_correio", "nr_decolagem", "nr_horas_voadas", "kg_peso", 
+             "nr_ask", "nr_rpk", "nr_atk", "nr_rtk")
+
+    
+    # setting the directory      
+    setwd(dwbasrds) 
+    
+    # Saving a single object to a file
+    saveRDS(BASICA, paste(file, ".rds"))
+    
+  } # Creating looping for .txt files
+  
+  {
+    
+    # Step 1: set the working directory (where files are saved)
+    setwd(dwbasrds) 
+    
+    # Step 2: get all the right file names
+    file_names = list.files(getwd())
+    file_names = file_names[grepl(".rds",file_names)]
+    
+    # Step 3: get the read.csv function working
+    files = readRDS("1 .rds")
+    
+    # Step 4: use lapply to apply the read.csv function to all values of file_names
+    files = lapply(file_names, readRDS)
+    files = rbindlist(files, fill = TRUE)
+    
+    # check structure of new data set
+    str(files)
+    
+    # rename
+    BASICA = files
+    
+    
+  } # Join databases
+  
+  # Dropping unnecessary databases
+  remove(list = c("files", "file_names"))
+
+  BASICA = BASICA %>% mutate_at(c(17:34), ~replace(., is.na(.), 0)) %>% ungroup() %>%
+    group_by(id_empresa, nr_voo, hr_partida_real, dt_partida_real, sg_icao_origem,
+             sg_icao_destino, hr_chegada_real, dt_chegada_real, sg_empresa_icao,
+             id_di, ds_di, ds_grupo_di, nr_ano_referencia, nr_ano_mes_referencia,
+             ds_tipo_linha, ds_natureza_etapa) %>%
+    dplyr::summarise(lt_combustivel = sum(lt_combustivel),
+                     nr_assentos_ofertados = sum(nr_assentos_ofertados), 
+                     kg_payload = sum(kg_payload), 
+                     km_distancia = sum(km_distancia),
+                     seat_bas = sum(seat_bas), 
+                     nr_passag_gratis = sum(nr_passag_gratis), 
+                     kg_bagagem_livre = sum(kg_bagagem_livre), 
+                     kg_bagagem_excesso = sum(kg_bagagem_excesso),
+                     kg_carga_paga = sum(kg_carga_paga), 
+                     kg_carga_gratis = sum(kg_carga_gratis),
+                     kg_correio = sum(kg_correio), 
+                     nr_decolagem = sum(nr_decolagem),
+                     nr_horas_voadas = sum(nr_horas_voadas), 
+                     kg_peso = sum(kg_peso),
+                     nr_ask = sum(nr_ask), 
+                     nr_rpk = sum(nr_rpk),
+                     nr_atk = sum(nr_atk), 
+                     nr_rtk = sum(nr_rtk))
+  
+  # renaming database
+  BASICA_Essay_II = BASICA 
+  
+  # setting the directory      
+  setwd(dwfinrds) 
+  
+  # Saving a single object to a file
+  saveRDS(BASICA_Essay_II, "BASICA_Essay_II.rds")
+  
+} # Transforming Basic database
+
+{
+  # setting the directory  
+  setwd(dwpriraw) 
+  
+  # creating a list of .CSV databases
+  temp = list.files(pattern = "*.CSV") 
+  
+  for (file in 1:35){ 
+    
+    # setting the directory    
+    setwd(dwpriraw) 
+    
+    # get the read_delim function working
+    vfiles = read_delim(temp[file], ";", 
+                        escape_double = FALSE, 
+                        locale = locale(decimal_mark = ",", grouping_mark = "."), 
+                        trim_ws = TRUE)
+    
+    # organizing database
+    PRECOS = vfiles %>% mutate(RECEITA = ASSENTOS*TARIFA) %>% 
+      group_by(ANO, MES, EMPRESA, ORIGEM, DESTINO) %>%
+      dplyr::summarise(ASSENTOS = sum(ASSENTOS),
+                       RECEITA = sum(RECEITA))
+    
+    # Change the names of the columns
+    names(PRECOS)[names(PRECOS) == "ASSENTOS"] = "seat"
+    names(PRECOS)[names(PRECOS) == "RECEITA"] = "revenue"
+    names(PRECOS)[names(PRECOS) == "EMPRESA"] = "airline"
+    names(PRECOS)[names(PRECOS) == "ANO"] = "year"
+    names(PRECOS)[names(PRECOS) == "MES"] = "month"
+    names(PRECOS)[names(PRECOS) == "ORIGEM"] = "air_dep"
+    names(PRECOS)[names(PRECOS) == "DESTINO"] = "air_arr"
+    
+    # setting the directory      
+    setwd(dwprirds) 
+    
+    # Saving a single object to a file
+    saveRDS(PRECOS, paste(file, ".rds"))
+    
+    
+  } # Creating looping for .txt files
+  
+  {
+    
+    # Step 1: set the working directory (where files are saved)
+    setwd(dwprirds) 
+    
+    # Step 2: get all the right file names
+    file_names = list.files(getwd())
+    file_names = file_names[grepl(".rds",file_names)]
+    
+    # Step 3: get the read.csv function working
+    files = readRDS("1 .rds")
+    
+    # Step 4: use lapply to apply the read.csv function to all values of file_names
+    files = lapply(file_names, readRDS)
+    files = rbindlist(files, fill = TRUE)
+    
+    # check structure of new data set
+    str(files)
+    
+    # rename
+    PRICES = files
+    
+    # set directory
+    setwd(dwfinrds)
+    
+    # Saving a single object to a file
+    saveRDS(PRICES, "PRICES.rds")
+    
+    
+  } # Join databases
+  
+  # Dropping unnecessary databases
+  remove(list = c("files", "file_names"))
+  
+  # renaming database
+  PRICES_Essay_II = PRICES %>% 
+    group_by(year, month, air_arr, air_dep, airline) %>%
+    dplyr::summarise(seat = sum(seat), revenue = sum(revenue))
+ 
+  # set directory
+  setwd(dwfinrds)
+    
+  # Saving a single object to a file
+  saveRDS(PRICES_Essay_II, "PRICES_Essay_II.rds")
+
+  
+} # Transforming Prices database
+
+{
+  # set directory
+  setwd(dwfinrds)
+  
+  # Importing databases
+  BASICA =    readRDS("BASICA_Essay_II.rds")
+  COMBINADA = readRDS("COMBINADA_Essay_II.rds")
+  PRICES =    readRDS("PRICES_Essay_II.rds")
+  
+  # Merging databases
+  BASE = BASICA %>% left_join(COMBINADA, 
+                               by = c("id_empresa", "nr_voo", "hr_partida_real", 
+                                      "dt_partida_real", "sg_icao_origem", "sg_icao_destino", 
+                                      "hr_chegada_real", "dt_chegada_real")) %>%
+    mutate(taxa = seat_com / seat_bas) %>%
+    filter(taxa > 0 & taxa <= 1) %>%
+    filter(id_di %in% c(2,3,6) & ds_natureza_etapa == "DOMÉSTICA")
+  
+  # Saving a single object to a file
+  saveRDS(BASE, "BASE_Essay_II.rds")
+  
+  # organize database
+  FINAL = BASE %>%
+    group_by(sg_empresa_icao, sg_icao_origem, sg_icao_destino, nr_ano_mes_referencia) %>%
+    dplyr::summarise(lt_fuel = sum(lt_combustivel),
+                     seat_offer = sum(nr_assentos_ofertados),
+                     payload_off = sum(kg_payload),
+                     km_distance = sum(km_distancia),
+                     seat_free = sum(nr_passag_gratis),
+                     payload_dem = sum(kg_carga_paga),
+                     mail = sum(kg_correio),
+                     take_off = sum(nr_decolagem),
+                     weight = sum(kg_peso),
+                     nr_ask = sum(nr_ask),
+                     nr_atk = sum(nr_atk),
+                     nr_rpk = sum(nr_rpk),
+                     nr_rtk = sum(nr_rtk), 
+                     seat_com = sum(seat_com),
+                     seat_bas = sum(seat_bas)) %>%
+    mutate(taxa = seat_com / seat_bas) %>%
+    filter(taxa > 0 & taxa <= 1) %>%
+    mutate(air_dep = sg_icao_origem, air_arr = sg_icao_destino, airline = sg_empresa_icao)
+  
+  # create ANO and MES variables
+  FINAL = FINAL %>% 
+    mutate(year = as.double(str_sub(nr_ano_mes_referencia, 1, 4)),
+           month = as.double(str_sub(nr_ano_mes_referencia, 5, 6)))
+  
+  # join databases
+  FINAL = FINAL %>% left_join(PRICES, by = c("year", "month", "airline", "air_dep", "air_arr")) %>%
+    filter(seat > 0) %>% 
+    mutate(seat_dem = seat)
+  
+  # organizing database
+  FINAL = FINAL %>% ungroup() %>%
+    select("year", "month", "airline", "air_dep", "air_arr", 
+           "seat_offer", "seat_bas", "seat_com", "seat_dem", "seat_free", "taxa",
+           "take_off", "revenue", "payload_off", "payload_dem", "mail", "weight", 
+           "lt_fuel", "km_distance", "nr_ask", "nr_atk", "nr_rpk", "nr_rtk") %>% 
+    mutate(distance = km_distance/take_off)
+  
+  # Saving a single object to a file
+  saveRDS(FINAL, "FINAL_Essay_II.rds")
+} # Organizing databases
+
+# test FINAL database
+TESTE = FINAL %>% group_by(month, year) %>%
+  dplyr::summarise(airline = length(airline), 
+                   air_dep = length(air_dep), air_arr = length(air_arr),
+                   seat_offer = length(seat_offer), seat_bas = length(seat_bas), 
+                   seat_com = length(seat_com), seat_dem = length(seat_dem), 
+                   seat_free = length(seat_free), taxa = length(taxa), take_off = length(take_off),
+                   revenue = length(revenue), payload_off = length(payload_off), 
+                   payload_dem = length(payload_dem), mail = length(mail), weight = length(weight),
+                   lt_fuel = length(lt_fuel), km_distance = length(km_distance), 
+                   nr_ask = length(nr_ask), nr_atk = length(nr_atk), nr_rpk = length(nr_rpk),
+                   nr_rtk = length(nr_rtk))
+                   
+```
