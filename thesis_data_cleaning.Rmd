@@ -384,8 +384,8 @@ dwprirds = paste0(dwdir, "/data/prices/rds")
   saveRDS(FINAL, "FINAL_Essay_II.rds")
 } # Organizing databases
 
-# test FINAL database
-TESTE = FINAL %>% group_by(month, year) %>%
+# Test of FINAL database length variables
+LENGTH = FINAL %>% group_by(month, year) %>%
   dplyr::summarise(airline = length(airline), 
                    air_dep = length(air_dep), air_arr = length(air_arr),
                    seat_offer = length(seat_offer), seat_bas = length(seat_bas), 
