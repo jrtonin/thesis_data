@@ -576,7 +576,35 @@ LENGTH = FINAL %>% group_by(month, year) %>%
            RouteShare, FreqHHI, RouteHHI, DepHHI, ArrHHI,
            DepShare, ArrShare, FreqShare,
            Tourist, ArrHUB, DepHUB, market)
-    
+  
+  # inserting arrival airport market structure by airline
+  market_arr = BASE1 %>% 
+    ungroup() %>%
+    group_by(year, month, air_arr, airline) %>%
+    dplyr::summarise(revenue = sum(revenue)) %>%
+    arrange(year, month, air_arr, desc(revenue)) %>%
+    group_by(year, month, air_arr) %>%
+    dplyr::mutate(id = sequence(n())) %>%
+    dplyr::mutate(market_arr = case_when(id == 1 ~ "lider", TRUE ~ "seguidora")) %>%
+    select(-revenue, -id)
+  
+  # inserting departure airport market structure by airline
+  market_dep = BASE1 %>% 
+    ungroup() %>%
+    group_by(year, month, air_dep, airline) %>%
+    dplyr::summarise(revenue = sum(revenue)) %>%
+    arrange(year, month, air_dep, desc(revenue)) %>%
+    group_by(year, month, air_dep) %>%
+    dplyr::mutate(id = sequence(n())) %>%
+    dplyr::mutate(market_dep = case_when(id == 1 ~ "lider", TRUE ~ "seguidora")) %>%
+    select(-revenue, -id)
+  
+  # merging database
+  BASE1 = BASE1 %>%
+    left_join(market_arr, by = c("year", "month", "air_arr", "airline")) %>%
+    left_join(market_dep, by = c("year", "month", "air_dep", "airline")) %>%
+    arrange(year, month, air_dep, air_arr, airline)
+  
   # Saving a single object to a file
   saveRDS(BASE1, "BASE1_Essay_II.rds")
     
