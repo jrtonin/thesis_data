@@ -897,11 +897,11 @@ setwd(dwfinrds)
 
 # reading databases
 BASE1 = readRDS("BASE1_Essay_II.rds")
-#BASE2 = readRDS("BASE2_Essay_II.rds")
-#LBASE1 = readRDS("LBASE1_Essay_II.rds")
-#LBASE2 = readRDS("LBASE2_Essay_II.rds")
-#BASE = readRDS("BASE_Essay_II.rds")
-#FINAL = readRDS("FINAL_Essay_II.rds")
+BASE2 = readRDS("BASE2_Essay_II.rds")
+LBASE1 = readRDS("LBASE1_Essay_II.rds")
+LBASE2 = readRDS("LBASE2_Essay_II.rds")
+BASE = readRDS("BASE_Essay_II.rds")
+FINAL = readRDS("FINAL_Essay_II.rds")
 
 ```
 
