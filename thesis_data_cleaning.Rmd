@@ -382,6 +382,7 @@ dwprirds = paste0(dwdir, "/data/prices/rds")
   
   # Saving a single object to a file
   saveRDS(FINAL, "FINAL_Essay_II.rds")
+  
 } # Organizing databases
 
 # Test of FINAL database length variables
@@ -538,129 +539,254 @@ LENGTH = FINAL %>% group_by(month, year) %>%
   BASE1 = BASE1 %>% mutate(hubling = 1-taxa,
                            aircraft = seat_offer/take_off)
     
-    # creating seat and payload capacity index
-    BASE1 = BASE1 %>% mutate(tx_seat = nr_rpk/nr_ask,
-                             tx_payload = nr_rtk/nr_atk) %>%
-      filter(tx_seat >= 0 & tx_seat <=1,
-             tx_payload >= 0 & tx_payload <=1)
+  # creating seat and payload capacity index
+  BASE1 = BASE1 %>% mutate(tx_seat = nr_rpk/nr_ask,
+                           tx_payload = nr_rtk/nr_atk) %>%
+    mutate(tx_seat = case_when(tx_seat < 0 ~ 0,
+                               tx_seat > 1 ~ 1,
+                               TRUE ~ tx_seat))
     
-    # importing IPCA database
-    IPCA = read_delim("C:/TESE/PARAMETROS/IPCA.csv", 
-                      ";", escape_double = FALSE, 
-                      locale = locale(decimal_mark = ",",
-                                      grouping_mark = "."), 
-                      trim_ws = TRUE) 
+  # importing IPCA database
+  IPCA = read_delim(url("https://raw.githubusercontent.com/jrtonin/thesis_data/main/data/parameter/IPCA.csv"), 
+                    ";", escape_double = FALSE, 
+                    locale = locale(decimal_mark = ",",
+                                    grouping_mark = "."), 
+                    trim_ws = TRUE) 
     
-    # merge IPCA and BASE1 databases
+  # merge IPCA and BASE1 databases
     BASE1 = BASE1 %>% left_join(IPCA, by = c("year", "month")) %>%
-      mutate(revenue = revenue*Index) %>%
-      mutate(price = revenue/seat_dem)
+    mutate(revenue = revenue*Index) %>%
+    mutate(price = revenue/seat_dem)
     
-    # creating BASE database
-    BASE = BASE1
+  # creating BASE database
+  BASE = BASE1
+  
+  # setting the directory  
+  setwd(dwfinrds)
     
-    # Saving a single object to a file
-    saveRDS(BASE, "C:/TESE/RESULT/BASE_Essay_II.rds")
+  # Saving a single object to a file
+  saveRDS(BASE, "BASE_Essay_II.rds")
     
-    # selecting final BASE1 database
-    BASE1 = BASE1 %>% ungroup() %>% 
-      select(year, month, air_dep, air_arr, airline,
-             seat_offer, seat_com, seat_bas, seat_dem, seat_free,
-             revenue, price, take_off, hubling, distance, lt_fuel,
-             mail, weight, tx_seat, tx_payload, N, aircraft,
-             RouteShare, FreqHHI, RouteHHI, DepHHI, ArrHHI,
-             DepShare, ArrShare, FreqShare,
-             Tourist, ArrHUB, DepHUB, market)
+  # selecting final BASE1 database
+  BASE1 = BASE1 %>% ungroup() %>% 
+    select(year, month, air_dep, air_arr, airline,
+           seat_offer, seat_com, seat_bas, seat_dem, seat_free,
+           revenue, price, take_off, hubling, distance, lt_fuel,
+           mail, weight, tx_seat, tx_payload, N, aircraft,
+           RouteShare, FreqHHI, RouteHHI, DepHHI, ArrHHI,
+           DepShare, ArrShare, FreqShare,
+           Tourist, ArrHUB, DepHUB, market)
     
-    # Saving a single object to a file
-    saveRDS(BASE1, "C:/TESE/RESULT/BASE1_Essay_II.rds")
+  # Saving a single object to a file
+  saveRDS(BASE1, "BASE1_Essay_II.rds")
     
-    # applying log
-    LBASE1 = BASE1 %>% mutate(seat_offer = log(seat_offer), 
-                              seat_com = log(seat_com), 
-                              seat_bas = log(seat_bas), 
-                              seat_dem = log(seat_dem), 
-                              seat_free = log(seat_free),
-                              revenue = log(revenue), 
-                              price = log(price),
-                              take_off = log(take_off), 
-                              hubling = log(hubling), 
-                              distance = log(distance), 
-                              lt_fuel = log(lt_fuel),
-                              mail = log(mail), 
-                              weight = log(weight), 
-                              tx_seat = log(1+tx_seat), 
-                              tx_payload = log(1+tx_payload),
-                              aircraft = log(aircraft),
-                              RouteShare = log(RouteShare), 
-                              FreqHHI = log(FreqHHI), 
-                              RouteHHI = log(RouteHHI), 
-                              DepHHI = log(DepHHI), 
-                              ArrHHI = log(ArrHHI),
-                              DepShare = log(DepShare),
-                              ArrShare = log(ArrShare),
-                              FreqShare = log(FreqShare))
+  # applying log
+  LBASE1 = BASE1 %>% mutate(seat_offer = log(seat_offer), 
+                            seat_com = log(seat_com), 
+                            seat_bas = log(seat_bas), 
+                            seat_dem = log(seat_dem), 
+                            seat_free = log(seat_free),
+                            revenue = log(revenue), 
+                            price = log(price),
+                            take_off = log(take_off), 
+                            hubling = log(hubling), 
+                            distance = log(distance), 
+                            lt_fuel = log(lt_fuel),
+                            mail = log(mail), 
+                            weight = log(weight), 
+                            tx_seat = log(1+tx_seat), 
+                            tx_payload = log(1+tx_payload),
+                            aircraft = log(aircraft),
+                            RouteShare = log(RouteShare), 
+                            FreqHHI = log(FreqHHI), 
+                            RouteHHI = log(RouteHHI), 
+                            DepHHI = log(DepHHI), 
+                            ArrHHI = log(ArrHHI),
+                            DepShare = log(DepShare),
+                            ArrShare = log(ArrShare),
+                            FreqShare = log(FreqShare))
     
-    # transforming inf to 0
-    is.na(LBASE1) = sapply(LBASE1, is.infinite)
-    LBASE1[is.na(LBASE1)] = 0
+  # transforming inf to 0
+  is.na(LBASE1) = sapply(LBASE1, is.infinite)
+  LBASE1[is.na(LBASE1)] = 0
     
-    # Saving a single object to a file
-    saveRDS(LBASE1, "C:/TESE/RESULT/LBASE1_Essay_II.rds")
+  # Saving a single object to a file
+  saveRDS(LBASE1, "LBASE1_Essay_II.rds")
+  
 } # Organizing BASE1 and LBASE1 databases
 
 {
-    # pre-organizing BASE2 database
-    BASE2 = BASE %>% filter(N > 1) %>%
-      group_by(year, month, air_dep, air_arr, market) %>% 
-      dplyr::summarise(seat_offer = sum(seat_offer),
-                       seat_com = sum(seat_com),
-                       seat_bas = sum(seat_bas),
-                       seat_dem = sum(seat_dem),
-                       seat_free = sum(seat_free),
-                       revenue = sum(revenue),
-                       take_off = sum(take_off),
-                       lt_fuel = sum(lt_fuel), 
-                       mail = sum(mail),
-                       weight =  sum(weight),
-                       nr_ask =  sum(nr_ask),
-                       nr_atk =  sum(nr_atk),
-                       nr_rpk =  sum(nr_rpk),
-                       nr_rtk =  sum(nr_rtk)) %>%
-      mutate(price = revenue/seat_dem,
-             tx_seat = nr_rpk/nr_ask,
-             tx_payload = nr_rtk/nr_atk,
-             hubling = seat_com / seat_bas,
-             aircraft = seat_offer / take_off) 
+  # pre-organizing BASE2 database
+  BASE2 = BASE %>% filter(N == 2) %>%
+    group_by(year, month, air_dep, air_arr, market) %>% 
+    dplyr::summarise(seat_offer = sum(seat_offer),
+                     seat_com = sum(seat_com),
+                     seat_bas = sum(seat_bas),
+                     seat_dem = sum(seat_dem),
+                     seat_free = sum(seat_free),
+                     revenue = sum(revenue),
+                     take_off = sum(take_off),
+                     lt_fuel = sum(lt_fuel), 
+                     mail = sum(mail),
+                     weight =  sum(weight),
+                     nr_ask =  sum(nr_ask),
+                     nr_atk =  sum(nr_atk),
+                     nr_rpk =  sum(nr_rpk),
+                     nr_rtk =  sum(nr_rtk)) %>%
+    mutate(price = revenue/seat_dem,
+           tx_seat = nr_rpk/nr_ask,
+           tx_payload = nr_rtk/nr_atk,
+           hubling = seat_com / seat_bas,
+           aircraft = seat_offer / take_off) 
     
-    # filtering leader and follower companies
-    lider = BASE2 %>% filter(market == "lider")
-    seguidora = BASE2 %>% filter(market == "seguidora")
+  # filtering leader and follower companies
+  lider = BASE2 %>% filter(market == "lider")
+  seguidora = BASE2 %>% filter(market == "seguidora")
     
-    # joining leader and follower companies with BASE2 database
-    BASE2 = left_join(lider, seguidora, by = c("year", "month", "air_arr", "air_dep")) %>%
-      mutate(CODE = paste0(air_arr, air_dep))
+  # joining leader and follower companies with BASE2 database
+  BASE2 = left_join(lider, seguidora, by = c("year", "month", "air_arr", "air_dep")) %>%
+    mutate(CODE = paste0(air_arr, air_dep))
     
-    # setting price and demand variables
-    ROUTES = BASE2 %>% 
-      mutate(seat_l = seat_dem.x, revenue_l = revenue.x,
-             seat_f = seat_dem.y, revenue_f = revenue.y) %>%
-      mutate(price_l = revenue_l/seat_l, price_f = revenue_f/seat_f) %>%
-      mutate(seat_l = log(seat_l), seat_f = log(seat_f), 
-             price_l = log(price_l), price_f = log(price_f)) %>%
-      select(year, month, air_dep, air_arr, seat_l, 
-             price_l, seat_f, price_f, CODE) %>%
-      arrange(CODE, year, month)
+  # setting price and demand variables
+  ROUTES = BASE2 %>% 
+    mutate(seat_l = seat_dem.x, revenue_l = revenue.x,
+           seat_f = seat_dem.y, revenue_f = revenue.y) %>%
+    mutate(price_l = revenue_l/seat_l, price_f = revenue_f/seat_f) %>%
+    mutate(seat_l = log(seat_l), seat_f = log(seat_f), 
+           price_l = log(price_l), price_f = log(price_f)) %>%
+    select(year, month, air_dep, air_arr, seat_l, 
+           price_l, seat_f, price_f, CODE) %>%
+    arrange(CODE, year, month)
     
-    # calculating the difference of leader and follower companies data
-    BASE2 = BASE2 %>% mutate(seat_offer = seat_offer.x - seat_offer.y,
+  # calculating the difference of leader and follower companies data
+  BASE2 = BASE2 %>% mutate(seat_offer = seat_offer.x - seat_offer.y,
+                           seat_com = seat_com.x - seat_com.y,
+                           seat_bas = seat_bas.x - seat_bas.y,
+                           seat_dem = seat_dem.x - seat_dem.y,
+                           seat_free = seat_free.x - seat_free.y, 
+                           revenue = revenue.x - revenue.y,
+                           take_off = take_off.x - take_off.y,
+                           lt_fuel = lt_fuel.x - lt_fuel.y,
+                           mail = mail.x - mail.y,
+                           weight = weight.x - weight.y,
+                           price = price.x - price.y,
+                           tx_seat = tx_seat.x - tx_seat.y,
+                           tx_payload = tx_payload.x - tx_payload.y,
+                           hubling = hubling.x - hubling.y,
+                           aircraft = aircraft.x - aircraft.y) %>%
+    group_by(year, month, air_arr, air_dep) %>%
+    select(year, month, air_dep, air_arr,
+           seat_offer, seat_com, seat_bas, seat_dem, seat_free,
+           revenue, price, weight, take_off, lt_fuel, mail, aircraft,
+           tx_seat, tx_payload, hubling)
+    
+  # editing the CONTROL database (basic information of routes)
+  CONTROL = BASE %>% group_by(year, month, air_arr, air_dep) %>% 
+    dplyr::summarise(N = mean(N),
+                     FreqHHI = mean(FreqHHI),
+                     RouteHHI = mean(RouteHHI),
+                     ArrHHI = mean(ArrHHI),
+                     DepHHI = mean(DepHHI),
+                     distance = mean(distance))
+    
+  # merging CONTROL and BASE2 databases
+  BASE2 = BASE2 %>% left_join(CONTROL, by = c("year", "month", "air_dep", "air_arr"))
+    
+  # editing dummy of tourist airports 
+  BASE2 = BASE2 %>% mutate(Tourist = case_when(air_dep == "SBAR" ~ TRUE,
+                                              air_dep == "SBCB" ~ TRUE,
+                                              air_dep == "SBDB" ~ TRUE,
+                                              air_dep == "SBFI" ~ TRUE,
+                                              air_dep == "SBFN" ~ TRUE,
+                                              air_dep == "SBFZ" ~ TRUE,
+                                              air_dep == "SBGL" ~ TRUE,
+                                              air_dep == "SBGV" ~ TRUE,
+                                              air_dep == "SBIL" ~ TRUE,
+                                              air_dep == "SBLE" ~ TRUE,
+                                              air_dep == "SBPS" ~ TRUE,
+                                              air_dep == "SBRF" ~ TRUE,
+                                              air_dep == "SBVT" ~ TRUE,
+                                              air_dep == "SBFL" ~ TRUE,
+                                              TRUE ~ FALSE))
+  # editing dummy of HUB airports 
+  BASE2 = BASE2 %>% mutate(ArrHUB = case_when(air_arr == "SBSP" ~ TRUE,
+                                              air_arr == "SBGL" ~ TRUE,
+                                              air_arr == "SBRJ" ~ TRUE,
+                                              air_arr == "SBGR" ~ TRUE,
+                                              air_arr == "SBBR" ~ TRUE,
+                                              air_arr == "SBFZ" ~ TRUE,
+                                              air_arr == "SBRF" ~ TRUE,
+                                              air_arr == "SBBH" ~ TRUE,
+                                              air_arr == "SBKP" ~ TRUE,
+                                              air_arr == "SBEG" ~ TRUE,
+                                              TRUE ~ FALSE),
+                           DepHUB = case_when(air_arr == "SBSP" ~ TRUE,
+                                              air_arr == "SBGL" ~ TRUE,
+                                              air_arr == "SBRJ" ~ TRUE,
+                                              air_arr == "SBGR" ~ TRUE,
+                                              air_arr == "SBBR" ~ TRUE,
+                                              air_arr == "SBFZ" ~ TRUE,
+                                              air_arr == "SBRF" ~ TRUE,
+                                              air_arr == "SBBH" ~ TRUE,
+                                              air_arr == "SBKP" ~ TRUE,
+                                              air_arr == "SBEG" ~ TRUE,
+                                              TRUE ~ FALSE))
+    
+  # summarizing BASE2 and applying log 
+  LBASE2 = BASE %>% filter(N == 2) %>%
+    group_by(year, month, air_dep, air_arr, market) %>% 
+    dplyr::summarise(seat_offer = sum(seat_offer),
+                     seat_com = sum(seat_com),
+                     seat_bas = sum(seat_bas),
+                     seat_dem = sum(seat_dem),
+                     seat_free = sum(seat_free),
+                     revenue = sum(revenue),
+                     take_off = sum(take_off),
+                     lt_fuel = sum(lt_fuel), 
+                     mail = sum(mail),
+                     weight =  sum(weight),
+                     nr_ask =  sum(nr_ask)+1,
+                     nr_atk =  sum(nr_atk)+1,
+                     nr_rpk =  sum(nr_rpk)+1,
+                     nr_rtk =  sum(nr_rtk)+1) %>%
+    mutate(seat_offer = log(seat_offer),
+           seat_com = log(seat_com),
+           seat_bas = log(seat_bas),
+           seat_dem = log(seat_dem),
+           revenue = log(revenue),
+           take_off = log(take_off),
+           lt_fuel = log(lt_fuel), 
+           mail = log(mail),
+           weight =  log(weight),
+           nr_ask =  log(nr_ask),
+           nr_atk =  log(nr_atk),
+           nr_rpk =  log(nr_rpk),
+           nr_rtk =  log(nr_rtk),
+           price = log(revenue/seat_dem),
+           tx_seat = log(1+(nr_rpk/nr_ask)),
+           tx_payload = log(1+(nr_rtk/nr_atk)),
+           hubling = log(seat_com / seat_bas),
+           aircraft = log(seat_offer/take_off))
+  
+  # transforming inf data in 0
+  is.na(LBASE2) = sapply(LBASE2, is.infinite)
+  LBASE2[is.na(LBASE2)] = 0
+    
+  # filtering leader and follower companies
+  lider = LBASE2 %>% filter(market == "lider")
+  seguidora = LBASE2 %>% filter(market == "seguidora")
+    
+  # merging leader and follower database with LBASE2
+  LBASE2 = left_join(lider, seguidora, by = c("year", "month", "air_arr", "air_dep")) 
+    
+  # calculating the difference of leader and follower companies in database
+  LBASE2 = LBASE2 %>% mutate(seat_offer = seat_offer.x - seat_offer.y,
                              seat_com = seat_com.x - seat_com.y,
                              seat_bas = seat_bas.x - seat_bas.y,
                              seat_dem = seat_dem.x - seat_dem.y,
-                             seat_free = seat_free.x - seat_free.y, 
                              revenue = revenue.x - revenue.y,
                              take_off = take_off.x - take_off.y,
-                             lt_fuel = lt_fuel.x - lt_fuel.y,
+                             lt_fuel = lt_fuel.x - lt_fuel.y, 
                              mail = mail.x - mail.y,
                              weight = weight.x - weight.y,
                              price = price.x - price.y,
@@ -668,26 +794,25 @@ LENGTH = FINAL %>% group_by(month, year) %>%
                              tx_payload = tx_payload.x - tx_payload.y,
                              hubling = hubling.x - hubling.y,
                              aircraft = aircraft.x - aircraft.y) %>%
-      group_by(year, month, air_arr, air_dep) %>%
-      select(year, month, air_dep, air_arr,
-             seat_offer, seat_com, seat_bas, seat_dem, seat_free,
-             revenue, price, weight, take_off, lt_fuel, mail, aircraft,
-             tx_seat, tx_payload, hubling)
-    
-    # editing the CONTROL database (basic information of routes)
-    CONTROL = BASE %>% group_by(year, month, air_arr, air_dep) %>% 
+    group_by(year, month, air_arr, air_dep) %>%
+    select(year, month, air_dep, air_arr,
+           seat_offer, seat_com, seat_bas, seat_dem, revenue, aircraft,
+           take_off, lt_fuel, mail, weight, price, tx_seat, tx_payload, hubling)
+  
+  # editing the CONTROL database (basic information of routes)
+  CONTROL = BASE %>% group_by(year, month, air_arr, air_dep) %>% 
       dplyr::summarise(N = mean(N),
-                       FreqHHI = mean(FreqHHI),
-                       RouteHHI = mean(RouteHHI),
-                       ArrHHI = mean(ArrHHI),
-                       DepHHI = mean(DepHHI),
-                       distance = mean(distance))
+                     FreqHHI = log(mean(FreqHHI)),
+                     RouteHHI = log(mean(RouteHHI)),
+                     ArrHHI = log(mean(ArrHHI)),
+                     DepHHI = log(mean(DepHHI)),
+                     distance = log(mean(distance)))
     
-    # merging CONTROL and BASE2 databases
-    BASE2 = BASE2 %>% left_join(CONTROL, by = c("year", "month", "air_dep", "air_arr"))
+  # merging CONTROL and LBASE2 databases
+  LBASE2 = LBASE2 %>% left_join(CONTROL, by = c("year", "month", "air_dep", "air_arr"))
     
-    # editing dummy of tourist airports 
-    BASE2 = BASE2 %>% mutate(Tourist = case_when(air_dep == "SBAR" ~ TRUE,
+  # editing dummy of tourist airports 
+  LBASE2 = LBASE2 %>% mutate(Tourist = case_when(air_dep == "SBAR" ~ TRUE,
                                                 air_dep == "SBCB" ~ TRUE,
                                                 air_dep == "SBDB" ~ TRUE,
                                                 air_dep == "SBFI" ~ TRUE,
@@ -702,8 +827,8 @@ LENGTH = FINAL %>% group_by(month, year) %>%
                                                 air_dep == "SBVT" ~ TRUE,
                                                 air_dep == "SBFL" ~ TRUE,
                                                 TRUE ~ FALSE))
-    # editing dummy of HUB airports 
-    BASE2 = BASE2 %>% mutate(ArrHUB = case_when(air_arr == "SBSP" ~ TRUE,
+  # editing dummy of HUB airports 
+  LBASE2 = LBASE2 %>% mutate(ArrHUB = case_when(air_arr == "SBSP" ~ TRUE,
                                                 air_arr == "SBGL" ~ TRUE,
                                                 air_arr == "SBRJ" ~ TRUE,
                                                 air_arr == "SBGR" ~ TRUE,
@@ -724,131 +849,16 @@ LENGTH = FINAL %>% group_by(month, year) %>%
                                                 air_arr == "SBBH" ~ TRUE,
                                                 air_arr == "SBKP" ~ TRUE,
                                                 air_arr == "SBEG" ~ TRUE,
-                                                TRUE ~ FALSE))
-    
-    # summarizing BASE2 and applying log 
-    LBASE2 = BASE %>% filter(N > 1) %>%
-      group_by(year, month, air_dep, air_arr, market) %>% 
-      dplyr::summarise(seat_offer = sum(seat_offer),
-                       seat_com = sum(seat_com),
-                       seat_bas = sum(seat_bas),
-                       seat_dem = sum(seat_dem),
-                       seat_free = sum(seat_free),
-                       revenue = sum(revenue),
-                       take_off = sum(take_off),
-                       lt_fuel = sum(lt_fuel), 
-                       mail = sum(mail),
-                       weight =  sum(weight),
-                       nr_ask =  sum(nr_ask)+1,
-                       nr_atk =  sum(nr_atk)+1,
-                       nr_rpk =  sum(nr_rpk)+1,
-                       nr_rtk =  sum(nr_rtk)+1) %>%
-      mutate(seat_offer = log(seat_offer),
-             seat_com = log(seat_com),
-             seat_bas = log(seat_bas),
-             seat_dem = log(seat_dem),
-             revenue = log(revenue),
-             take_off = log(take_off),
-             lt_fuel = log(lt_fuel), 
-             mail = log(mail),
-             weight =  log(weight),
-             nr_ask =  log(nr_ask),
-             nr_atk =  log(nr_atk),
-             nr_rpk =  log(nr_rpk),
-             nr_rtk =  log(nr_rtk),
-             price = log(revenue/seat_dem),
-             tx_seat = log(1+(nr_rpk/nr_ask)),
-             tx_payload = log(1+(nr_rtk/nr_atk)),
-             hubling = log(seat_com / seat_bas),
-             aircraft = log(seat_offer/take_off))
-    
-    # transforming inf data in 0
-    is.na(LBASE2) = sapply(LBASE2, is.infinite)
-    LBASE2[is.na(LBASE2)] = 0
-    
-    # filtering leader and follower companies
-    lider = LBASE2 %>% filter(market == "lider")
-    seguidora = LBASE2 %>% filter(market == "seguidora")
-    
-    # merging leader and follower database with LBASE2
-    LBASE2 = left_join(lider, seguidora, by = c("year", "month", "air_arr", "air_dep")) 
-    
-    # calculating the difference of leader and follower companies in database
-    LBASE2 = LBASE2 %>% mutate(seat_offer = seat_offer.x - seat_offer.y,
-                               seat_com = seat_com.x - seat_com.y,
-                               seat_bas = seat_bas.x - seat_bas.y,
-                               seat_dem = seat_dem.x - seat_dem.y,
-                               revenue = revenue.x - revenue.y,
-                               take_off = take_off.x - take_off.y,
-                               lt_fuel = lt_fuel.x - lt_fuel.y, 
-                               mail = mail.x - mail.y,
-                               weight = weight.x - weight.y,
-                               price = price.x - price.y,
-                               tx_seat = tx_seat.x - tx_seat.y,
-                               tx_payload = tx_payload.x - tx_payload.y,
-                               hubling = hubling.x - hubling.y,
-                               aircraft = aircraft.x - aircraft.y) %>%
-      group_by(year, month, air_arr, air_dep) %>%
-      select(year, month, air_dep, air_arr,
-             seat_offer, seat_com, seat_bas, seat_dem, revenue, aircraft,
-             take_off, lt_fuel, mail, weight, price, tx_seat, tx_payload, hubling)
-    
-    # editing the CONTROL database (basic information of routes)
-    CONTROL = BASE %>% group_by(year, month, air_arr, air_dep) %>% 
-      dplyr::summarise(N = mean(N),
-                       FreqHHI = log(mean(FreqHHI)),
-                       RouteHHI = log(mean(RouteHHI)),
-                       ArrHHI = log(mean(ArrHHI)),
-                       DepHHI = log(mean(DepHHI)),
-                       distance = log(mean(distance)))
-    
-    # merging CONTROL and LBASE2 databases
-    LBASE2 = LBASE2 %>% left_join(CONTROL, by = c("year", "month", "air_dep", "air_arr"))
-    
-    # editing dummy of tourist airports 
-    LBASE2 = LBASE2 %>% mutate(Tourist = case_when(air_dep == "SBAR" ~ TRUE,
-                                                  air_dep == "SBCB" ~ TRUE,
-                                                  air_dep == "SBDB" ~ TRUE,
-                                                  air_dep == "SBFI" ~ TRUE,
-                                                  air_dep == "SBFN" ~ TRUE,
-                                                  air_dep == "SBFZ" ~ TRUE,
-                                                  air_dep == "SBGL" ~ TRUE,
-                                                  air_dep == "SBGV" ~ TRUE,
-                                                  air_dep == "SBIL" ~ TRUE,
-                                                  air_dep == "SBLE" ~ TRUE,
-                                                  air_dep == "SBPS" ~ TRUE,
-                                                  air_dep == "SBRF" ~ TRUE,
-                                                  air_dep == "SBVT" ~ TRUE,
-                                                  air_dep == "SBFL" ~ TRUE,
-                                                  TRUE ~ FALSE))
-    # editing dummy of HUB airports 
-    LBASE2 = LBASE2 %>% mutate(ArrHUB = case_when(air_arr == "SBSP" ~ TRUE,
-                                                  air_arr == "SBGL" ~ TRUE,
-                                                  air_arr == "SBRJ" ~ TRUE,
-                                                  air_arr == "SBGR" ~ TRUE,
-                                                  air_arr == "SBBR" ~ TRUE,
-                                                  air_arr == "SBFZ" ~ TRUE,
-                                                  air_arr == "SBRF" ~ TRUE,
-                                                  air_arr == "SBBH" ~ TRUE,
-                                                  air_arr == "SBKP" ~ TRUE,
-                                                  air_arr == "SBEG" ~ TRUE,
-                                                  TRUE ~ FALSE),
-                               DepHUB = case_when(air_arr == "SBSP" ~ TRUE,
-                                                  air_arr == "SBGL" ~ TRUE,
-                                                  air_arr == "SBRJ" ~ TRUE,
-                                                  air_arr == "SBGR" ~ TRUE,
-                                                  air_arr == "SBBR" ~ TRUE,
-                                                  air_arr == "SBFZ" ~ TRUE,
-                                                  air_arr == "SBRF" ~ TRUE,
-                                                  air_arr == "SBBH" ~ TRUE,
-                                                  air_arr == "SBKP" ~ TRUE,
-                                                  air_arr == "SBEG" ~ TRUE,
-                                                  TRUE ~ FALSE)) %>%
-      mutate(CODE = paste0(air_arr,air_dep))
-    
-    # Saving a single object to a file
-    saveRDS(BASE2, "C:/TESE/RESULT/BASE2_Essay_II.rds")
-    saveRDS(LBASE2, "C:/TESE/RESULT/LBASE2_Essay_II.rds")    
+                                                TRUE ~ FALSE)) %>%
+    mutate(CODE = paste0(air_arr,air_dep))
+  
+  
+  # setting the directory  
+  setwd(dwfinrds)
+  
+  # Saving a single object to a file
+  saveRDS(BASE2, "BASE2_Essay_II.rds")
+  saveRDS(LBASE2, "LBASE2_Essay_II.rds")    
     
 } # organizing BASE2 and LBASE2 databases
 
