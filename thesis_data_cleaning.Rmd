@@ -6,6 +6,7 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
+
 knitr::opts_chunk$set(echo = FALSE, 
                       comment = NA,
                       warning = FALSE,
@@ -30,10 +31,6 @@ dwdir = print(getwd())
   rm(have, want, junk)
 } # Import packages
 
-```
-
-```{r cleanning, include = FALSE}
-
 # setting directories
 dwcomraw = paste0(dwdir, "/data/combined/raw")
 dwcomrds = paste0(dwdir, "/data/combined/rds")
@@ -42,6 +39,13 @@ dwbasraw = paste0(dwdir, "/data/basic/raw")
 dwbasrds = paste0(dwdir, "/data/basic/rds")
 dwpriraw = paste0(dwdir, "/data/prices/raw")
 dwprirds = paste0(dwdir, "/data/prices/rds")
+dwhaurds = paste0(dwdir, "/data/instrument/hausman/rds")
+dwestraw = paste0(dwdir, "/data/instrument/estban/raw")
+dwestrds = paste0(dwdir, "/data/instrument/estban/rds")
+
+```
+
+```{r cleanning, include = FALSE}
 
 {
   # setting the directory  
@@ -892,19 +896,16 @@ LENGTH = FINAL %>% group_by(month, year) %>%
 setwd(dwfinrds)
 
 # reading databases
-BASE1 = readRDS("BASE1_EssayI.rds")
-BASE2 = readRDS("BASE2_EssayI.rds")
-LBASE1 = readRDS("LBASE1_EssayI.rds")
-LBASE2 = readRDS("LBASE2_EssayI.rds")
-BASE = readRDS("BASE_EssayI.rds")
-FINAL = readRDS("FINAL_EssayI.rds")
+BASE1 = readRDS("BASE1_Essay_II.rds")
+BASE2 = readRDS("BASE2_Essay_II.rds")
+LBASE1 = readRDS("LBASE1_Essay_II.rds")
+LBASE2 = readRDS("LBASE2_Essay_II.rds")
+BASE = readRDS("BASE_Essay_II.rds")
+FINAL = readRDS("FINAL_Essay_II.rds")
 
 ```
 
 ```{r HAUSMAN_instruments, include=FALSE}
-
-# setting directories
-dwhaurds = paste0(dwdir, "data/instrument/hausman/rds")
 
 # organizing database
 ROUTES = BASE1 %>%
@@ -1030,11 +1031,12 @@ for (file in 1:30063){
   
   # summarizing DepHHI mean of routes
   distance150 = BASE %>% filter(arr_code_city %in% airportarr) %>%
-    dplyr::summarise(mDepHHI150 = mean(DepHHI))
-  
-  # consolidating information
-  distance150 = as.vector(distance150$mDepHHI150)
-  
+    dplyr::summarise(m150DepHHI = mean(DepHHI),
+                     m150RouteHHI = mean(RouteHHI),
+                     m150seat_dem = mean(seat_dem),
+                     m150price = mean(price),
+                     m150RouteShare = mean(RouteShare)) %>%
+    mutate(id = id[file])
   
   # filtering airports with distances greater than 300 km to arrival airport
   distance300 = DISTANCES %>% filter(air_arr %in% airport & distance > 300)
@@ -1042,11 +1044,12 @@ for (file in 1:30063){
   
   # summarizing DepHHI mean of routes
   distance300 = BASE %>% filter(arr_code_city %in% airportarr) %>%
-    dplyr::summarise(mDepHHI300 = mean(DepHHI))
-  
-  # consolidating information
-  distance300 = as.vector(distance300$mDepHHI300)
-  
+    dplyr::summarise(m300DepHHI = mean(DepHHI),
+                     m300RouteHHI = mean(RouteHHI),
+                     m300seat_dem = mean(seat_dem),
+                     m300price = mean(price),
+                     m300RouteShare = mean(RouteShare)) %>%
+    mutate(id = id[file])
   
   # filtering airports with distances greater than 500 km to arrival airport
   distance500 = DISTANCES %>% filter(air_arr %in% airport & distance > 500)
@@ -1054,15 +1057,17 @@ for (file in 1:30063){
   
   # summarizing DepHHI mean of routes
   distance500 = BASE %>% filter(arr_code_city %in% airportarr) %>%
-    dplyr::summarise(mDepHHI500 = mean(DepHHI))
+    dplyr::summarise(m500DepHHI = mean(DepHHI),
+                     m500RouteHHI = mean(RouteHHI),
+                     m500seat_dem = mean(seat_dem),
+                     m500price = mean(price),
+                     m500RouteShare = mean(RouteShare)) %>%
+    mutate(id = id[file])
   
-  # consolidating information
-  distance500 = as.vector(distance500$mDepHHI500)
-  
-  # criating final database
-  final = matrix(c(id[file], distance150, distance300, distance500), nrow = 1)
-  final = as.data.frame(final)
-  colnames(final) = c("id", "DepHHI150", "DepHHI300", "DepHHI500")
+  # merging final database
+  final = distance150 %>%
+    left_join(distance300, by = ("id")) %>%
+    left_join(distance500, by = ("id"))
   
   # setting the directory      
   setwd(dwhaurds) 
@@ -1094,7 +1099,6 @@ for (file in 1:30063){
     # rename
     INSTRUMENT = files
     
-    
   } # Join databases
 
   # setting the directory      
@@ -1106,10 +1110,6 @@ for (file in 1:30063){
 ```
 
 ```{r ESTBAN_instruments, include = FALSE}
-
-  # setting directories
-  dwestraw = paste0(dwdir, "data/instrument/estban/raw")
-  dwestrds = paste0(dwdir, "data/instrument/estban/rds")
 
   # setting the directory  
   setwd(dwestraw) 
