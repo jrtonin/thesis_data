@@ -897,11 +897,11 @@ setwd(dwfinrds)
 
 # reading databases
 BASE1 = readRDS("BASE1_Essay_II.rds")
-BASE2 = readRDS("BASE2_Essay_II.rds")
-LBASE1 = readRDS("LBASE1_Essay_II.rds")
-LBASE2 = readRDS("LBASE2_Essay_II.rds")
-BASE = readRDS("BASE_Essay_II.rds")
-FINAL = readRDS("FINAL_Essay_II.rds")
+#BASE2 = readRDS("BASE2_Essay_II.rds")
+#LBASE1 = readRDS("LBASE1_Essay_II.rds")
+#LBASE2 = readRDS("LBASE2_Essay_II.rds")
+#BASE = readRDS("BASE_Essay_II.rds")
+#FINAL = readRDS("FINAL_Essay_II.rds")
 
 ```
 
@@ -997,7 +997,8 @@ DISTANCES = DISTANCES %>%
 BASEF = BASE1 %>% 
   mutate(id = sequence(n()),
          yearmonth = paste0(year, month)) %>%
-  select(air_dep, air_arr, airline, DepHHI, id, yearmonth) %>%
+  select(air_dep, air_arr, airline, DepHHI, RouteHHI, seat_dem, price, 
+         RouteShare,  id, yearmonth) %>%
   ungroup() %>%
   left_join(aerodromos %>% select(code, code_city), by = c("air_dep" = "code")) %>%
   mutate(dep_code_city = code_city) %>% select(-code_city) %>%
