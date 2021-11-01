@@ -891,3 +891,172 @@ LENGTH = FINAL %>% group_by(month, year) %>%
 } # organizing BASE2 and LBASE2 databases
 
 ```
+
+```{r HAUSMAN_instruments_I, include=FALSE}
+
+# organizing database
+ROUTES = BASE1 %>%
+  group_by(air_arr, air_dep) %>%
+  dplyr::summarise(n = n()) %>%
+  dplyr::select(-n)
+
+# importing aerodromo database
+aerodromos = read_delim("C:/TESE/OUTROS/aerodromos.csv", 
+                        delim = ";", escape_double = FALSE, 
+                        locale = locale(encoding = "ISO-8859-1"), 
+                        trim_ws = TRUE)
+
+# importing lat and lon by city
+urlfile = "https://raw.githubusercontent.com/kelvins/Municipios-Brasileiros/main/csv/municipios.csv"
+latlon = read_csv(url(urlfile)) %>%
+  mutate(code_city = codigo_ibge,
+         lat = latitude,
+         lon = longitude,
+         city = nome,
+         uf_code = codigo_uf) %>% 
+  dplyr::select(code_city, city, uf_code, lat, lon)
+
+# including IBGE code and lat and lon
+aerodromos = aerodromos %>%
+  left_join(latlon, by = c("city", "uf_code")) 
+
+
+# summarizing end points
+endpointa = ROUTES %>% 
+  group_by(air_dep) %>% 
+  dplyr::summarise(n = n()) %>% 
+  dplyr::select(-n) %>%
+  left_join(aerodromos %>% dplyr::select(code, code_city), 
+            by = c("air_dep" = "code")) %>%
+  group_by(code_city) %>%
+  dplyr::summarise(n = n()) %>% 
+  ungroup() %>%
+  dplyr::select(-n)
+
+# summarizing pre points
+endpointb = ROUTES %>% 
+  group_by(air_arr) %>% 
+  dplyr::summarise(n = n()) %>% 
+  dplyr::select(-n) %>%
+  left_join(aerodromos %>% dplyr::select(code, code_city), by = c("air_arr" = "code")) %>%
+  group_by(code_city) %>%
+  dplyr::summarise(n = n()) %>% 
+  ungroup() %>%
+  dplyr::select(-n)
+
+# edditing final endpoint database
+endpoint = endpointa %>% bind_rows(endpointb) %>%
+  group_by(code_city) %>%
+  dplyr::summarise(n = n()) %>%
+  dplyr::select(-n)
+
+# transforming endpoint to vector
+vendpoint = as.vector(endpoint$code_city)
+
+# combining endpoints
+DISTANCES = as.data.frame(t(as.matrix(combn(vendpoint, 2)))) %>%
+  filter(!is.na(V1) | !is.na(V2)) %>%
+  mutate(filter = case_when(V1 == V2 ~ TRUE, TRUE ~ FALSE)) %>%
+  filter(filter == FALSE) %>%
+  left_join(aerodromos %>% select(code_city, lat, lon), by = c("V1" = "code_city")) %>%
+  mutate(lat_arr = lat, lon_arr = lon, arr = V1, dep = V2) %>%
+  select(arr, dep, lat_arr, lon_arr) %>%
+  left_join(aerodromos %>% select(code_city, lat, lon), by = c("dep" = "code_city")) %>%
+  mutate(lat_dep = lat, lon_dep = lon) %>%
+  select(arr, lat_arr, lon_arr, dep, lat_dep, lon_dep) %>%
+  rowwise() %>%
+  dplyr::mutate(distance = distm(x = c(lon_arr, lat_arr), 
+                                 y = c(lon_dep, lat_dep), 
+                                 fun = distHaversine)/1000) %>%
+  distinct() %>%
+  mutate(distance = round(distance, 0)) 
+
+# generating final DISTANCES database
+DISTANCES = DISTANCES %>% 
+  mutate(air_dep = dep, air_arr = arr) %>% 
+  select(air_arr, air_dep, distance) %>%
+  bind_rows(DISTANCES %>% 
+              mutate(air_dep = arr, air_arr = dep) %>% 
+              select(air_arr, air_dep, distance))
+
+# generating pre database
+BASEF = BASE1 %>% 
+  mutate(id = sequence(n()),
+         yearmonth = paste0(year, month)) %>%
+  select(air_dep, air_arr, airline, DepHHI, id, yearmonth) %>%
+  ungroup() %>%
+  left_join(aerodromos %>% select(code, code_city), by = c("air_dep" = "code")) %>%
+  mutate(dep_code_city = code_city) %>% select(-code_city) %>%
+  left_join(aerodromos %>% select(code, code_city), by = c("air_arr" = "code")) %>%
+  mutate(arr_code_city = code_city) %>% select(-code_city)  
+
+# creating id vector
+id = as.vector(BASEF$id)
+
+# editing looping 
+for (file in 1:22810){ 
+
+  # filtering airline variable
+  cia = BASEF %>% filter(id == id[file])
+  cia = as.vector(cia$airline)
+  
+  # filtering time variable
+  ym = BASEF %>% filter(id == id[file])
+  ym = as.vector(ym$yearmonth) 
+  
+  # filtering airport variable
+  airport = BASEF %>% filter(id == id[file])
+  airport = as.vector(airport$arr_code_city)
+  
+  # filtering airline and time in BASEF database
+  BASE = BASEF %>% filter(airline %in% cia & yearmonth %in% ym)
+  
+  # filtering airports with distances greater than 150 km to arrival airport
+  distance150 = DISTANCES %>% filter(air_arr %in% airport & distance > 150)
+  airportarr = as.vector(distance150$air_dep) 
+  
+  # summarizing DepHHI mean of routes
+  distance150 = BASE %>% filter(arr_code_city %in% airportarr) %>%
+    dplyr::summarise(mDepHHI150 = mean(DepHHI))
+  
+  # consolidating information
+  distance150 = as.vector(distance150$mDepHHI150)
+  
+  
+  # filtering airports with distances greater than 300 km to arrival airport
+  distance300 = DISTANCES %>% filter(air_arr %in% airport & distance > 300)
+  airportarr = as.vector(distance300$air_dep) 
+  
+  # summarizing DepHHI mean of routes
+  distance300 = BASE %>% filter(arr_code_city %in% airportarr) %>%
+    dplyr::summarise(mDepHHI300 = mean(DepHHI))
+  
+  # consolidating information
+  distance300 = as.vector(distance300$mDepHHI300)
+  
+  
+  # filtering airports with distances greater than 500 km to arrival airport
+  distance500 = DISTANCES %>% filter(air_arr %in% airport & distance > 500)
+  airportarr = as.vector(distance500$air_dep) 
+  
+  # summarizing DepHHI mean of routes
+  distance500 = BASE %>% filter(arr_code_city %in% airportarr) %>%
+    dplyr::summarise(mDepHHI500 = mean(DepHHI))
+  
+  # consolidating information
+  distance500 = as.vector(distance500$mDepHHI500)
+  
+  # criating final database
+  final = matrix(c(id[file], distance150, distance300, distance500), nrow = 1)
+  final = as.data.frame(final)
+  colnames(final) = c("id", "DepHHI150", "DepHHI300", "DepHHI500")
+  
+  # setting the directory      
+  setwd("C:/TESE/INSTRUMENT/INSTRUMENT_RDS") 
+    
+  # Saving a single object to a file
+  saveRDS(final, paste(file, ".rds"))
+  
+  } # Creating looping
+
+```
