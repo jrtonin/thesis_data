@@ -19,7 +19,8 @@ dwdir = print(getwd())
 
 { 
   # Check if the packages that we need are installed
-  want = c("tidyverse", "plm", "texreg", "lmtest", "knitr", "data.table")
+  want = c("tidyverse", "plm", "texreg", "lmtest", "knitr", "data.table",
+           "geosphere")
   have = want %in% rownames(installed.packages())
   # Install the packages that we miss
   if ( any(!have) ) { install.packages( want[!have] ) }
@@ -292,13 +293,6 @@ dwprirds = paste0(dwdir, "/data/prices/rds")
     
     # rename
     PRICES = files
-    
-    # set directory
-    setwd(dwfinrds)
-    
-    # Saving a single object to a file
-    saveRDS(PRICES, "PRICES.rds")
-    
     
   } # Join databases
   
@@ -892,7 +886,25 @@ LENGTH = FINAL %>% group_by(month, year) %>%
 
 ```
 
-```{r HAUSMAN_instruments_I, include=FALSE}
+```{r reading_databases, include=FALSE, echo=TRUE}
+
+# setting directories
+setwd(dwfinrds)
+
+# reading databases
+BASE1 = readRDS("BASE1_EssayI.rds")
+BASE2 = readRDS("BASE2_EssayI.rds")
+LBASE1 = readRDS("LBASE1_EssayI.rds")
+LBASE2 = readRDS("LBASE2_EssayI.rds")
+BASE = readRDS("BASE_EssayI.rds")
+FINAL = readRDS("FINAL_EssayI.rds")
+
+```
+
+```{r HAUSMAN_instruments, include=FALSE}
+
+# setting directories
+dwhaurds = paste0(dwdir, "data/instrument/hausman/rds")
 
 # organizing database
 ROUTES = BASE1 %>%
@@ -901,7 +913,8 @@ ROUTES = BASE1 %>%
   dplyr::select(-n)
 
 # importing aerodromo database
-aerodromos = read_delim("C:/TESE/OUTROS/aerodromos.csv", 
+aerodromos = 
+  read_delim(url("https://raw.githubusercontent.com/jrtonin/thesis_data/main/data/parameter/AERODROMOS.csv"), 
                         delim = ";", escape_double = FALSE, 
                         locale = locale(encoding = "ISO-8859-1"), 
                         trim_ws = TRUE)
@@ -994,7 +1007,7 @@ BASEF = BASE1 %>%
 id = as.vector(BASEF$id)
 
 # editing looping 
-for (file in 1:22810){ 
+for (file in 1:30063){ 
 
   # filtering airline variable
   cia = BASEF %>% filter(id == id[file])
@@ -1052,11 +1065,129 @@ for (file in 1:22810){
   colnames(final) = c("id", "DepHHI150", "DepHHI300", "DepHHI500")
   
   # setting the directory      
-  setwd("C:/TESE/INSTRUMENT/INSTRUMENT_RDS") 
+  setwd(dwhaurds) 
     
   # Saving a single object to a file
   saveRDS(final, paste(file, ".rds"))
   
   } # Creating looping
 
+ {
+    # Step 1: set the working directory (where files are saved)
+    setwd(dwhaurds) 
+    
+    # Step 2: get all the right file names
+    file_names = list.files(getwd())
+    file_names = file_names[grepl(".rds",file_names)]
+    
+    # Step 3: get the read.csv function working
+    files = readRDS("1 .rds")
+    
+    # Step 4: use lapply to apply the read.csv function to all values of file_names
+    files = lapply(file_names, readRDS)
+    list = files
+    files = rbindlist(files, fill = TRUE)
+    
+    # check structure of new data set
+    str(files)
+    
+    # rename
+    INSTRUMENT = files
+    
+    
+  } # Join databases
+
+  # setting the directory      
+  setwd(dwfinrds) 
+  
+  # Saving a single object to a file
+  saveRDS(INSTRUMENT, "HAUSMAN_instrument.rds")
+
+```
+
+```{r ESTBAN_instruments, include = FALSE}
+
+  # setting directories
+  dwestraw = paste0(dwdir, "data/instrument/estban/raw")
+  dwestrds = paste0(dwdir, "data/instrument/estban/rds")
+
+  # setting the directory  
+  setwd(dwestraw) 
+  
+  # creating a list of .CSV databases
+  temp = list.files(pattern = "*.CSV") 
+  
+  for (file in 1:35){ 
+
+    # setting the directory    
+    setwd(dwestraw) 
+    
+    # get the read_delim function working
+    vfiles = read_delim(temp[file], delim = ";", escape_double = FALSE, 
+                    locale = locale(decimal_mark = ",",
+                                    grouping_mark = ".", 
+                                    encoding = "ISO-8859-1"), 
+                    trim_ws = TRUE, skip = 2)
+    
+    # organizing database
+    ESTBAN = vfiles %>%
+      select(CODMUN_IBGE, AGEN_ESPERADAS, VERBETE_112_DEPOSITOS_BANCARIOS,
+             VERBETE_160_OPERACOES_DE_CREDITO, VERBETE_162_FINANCIAMENTOS, `#DATA_BASE`) %>%
+        mutate(code_city = CODMUN_IBGE,
+               nbank = AGEN_ESPERADAS,
+               deposits = VERBETE_112_DEPOSITOS_BANCARIOS,
+               credit = VERBETE_160_OPERACOES_DE_CREDITO,
+               loan = VERBETE_162_FINANCIAMENTOS,
+               time = `#DATA_BASE`) %>%
+      group_by(code_city, time) %>%
+      dplyr::summarise(nbank = sum(nbank),
+                       deposits = sum(deposits),
+                       credit = sum(credit),
+                       loan = sum(loan))
+      
+    # setting the directory      
+    setwd(dwestrds) 
+    
+    # Saving a single object to a file
+    saveRDS(ESTBAN, paste(file, ".rds"))
+ 
+  } # Creating looping for .txt files
+  
+  {
+    # Step 1: set the working directory (where files are saved)
+    setwd(dwestrds) 
+    
+    # Step 2: get all the right file names
+    file_names = list.files(getwd())
+    file_names = file_names[grepl(".rds",file_names)]
+    
+    # Step 3: get the read.csv function working
+    files = readRDS("1 .rds")
+    
+    # Step 4: use lapply to apply the read.csv function to all values of file_names
+    files = lapply(file_names, readRDS)
+    list = files
+    files = rbindlist(files, fill = TRUE)
+    
+    # check structure of new data set
+    str(files)
+    
+    # rename
+    ESTBAN = files
+    
+    
+  } # Join databases
+  
+  # Dropping unnecessary databases
+  remove(list = c("files", "file_names"))
+  
+  # including credit_loan variable
+  ESTBAN = ESTBAN %>% mutate(credit_loan = credit + loan)
+  
+  # setting the directory      
+  setwd(dwfinrds) 
+  
+  # Saving a single object to a file
+  saveRDS(ESTBAN, "ESTBAN_instrument.rds")
+  
 ```
