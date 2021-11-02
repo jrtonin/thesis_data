@@ -1089,7 +1089,7 @@ for (file in 1:31203){
 ```{r merging, include=FALSE}
 
 # importing aerodromo database
-aerodromos = read_delim(url("https://raw.githubusercontent.com/jrtonin/thesis_essay_ii/main/data/aerodromos.csv"), 
+aerodromos = read_delim(url("https://raw.githubusercontent.com/jrtonin/thesis_data/main/data/parameter/AERODROMOS.csv"), 
                         delim = ";", escape_double = FALSE, 
                         locale = locale(encoding = "ISO-8859-1"), 
                         trim_ws = TRUE)
@@ -1118,12 +1118,21 @@ ESTBAN = readRDS("ESTBAN_instrument.rds")
 # changing NA's
 HAUSMAN[is.na(HAUSMAN)] = 0
 
+{
 # merging ESTBAN and HAUSMAN data
 BASE1 = BASE %>%
-  left_join(aerodromos %>% dplyr::select(code, code_city), by = c("air_dep" = "code")) %>%
-  mutate(code_city_dep = code_city) %>% dplyr::select(-code_city) %>%
-  left_join(aerodromos %>% dplyr::select(code, code_city), by = c("air_arr" = "code")) %>%
-  mutate(code_city_arr = code_city) %>% dplyr::select(-code_city) %>%
+  left_join(aerodromos %>% dplyr::select(code, code_city, capital, region), 
+            by = c("air_dep" = "code")) %>%
+  mutate(code_city_dep = code_city,
+         capital_dep = capital,
+         region_dep = region) %>% 
+  dplyr::select(-code_city, -capital, -region) %>%
+  left_join(aerodromos %>% dplyr::select(code, code_city, capital, region), 
+            by = c("air_arr" = "code")) %>%
+  mutate(code_city_arr = code_city,
+         capital_arr = capital,
+         region_arr = region) %>% 
+  dplyr::select(-code_city, -capital, -region) %>%
   left_join(ESTBAN %>% 
             mutate(year = as.double(str_sub(time, 1,4)),
                    month = as.double(str_sub(time, 5, 6))) %>%
@@ -1162,9 +1171,8 @@ BASE1 = BASE %>%
          m500price = case_when(m500price == 0 ~ price, TRUE ~ m500price),
          m150RouteShare = case_when(m150RouteShare == 0 ~ RouteShare, TRUE ~ m150RouteShare),
          m300RouteShare = case_when(m300RouteShare == 0 ~ RouteShare, TRUE ~ m300RouteShare),
-         m500RouteShare = case_when(m500RouteShare == 0 ~ RouteShare, TRUE ~ m500RouteShare)) %>%
+         m500RouteShare = case_when(m500RouteShare == 0 ~ RouteShare, TRUE ~ m500RouteShare))
   
-
     # transforming inf to 0
     is.na(BASE1) = sapply(BASE1, is.infinite)
     BASE1[is.na(BASE1)] = 0
@@ -1225,28 +1233,15 @@ BASE1 = BASE %>%
     is.na(LBASE1) = sapply(LBASE1, is.infinite)
     LBASE1[is.na(LBASE1)] = 0
     
-{
-  # setting the directory and saving databases
-  setwd(dwfinrds)
-  saveRDS(BASE1, "BASE1_Essay_II.rds")
-  saveRDS(LBASE1, "LBASE1_Essay_II.rds")
-
-} # saving databases
- 
-```
-
-```{r organizing_data_duopoly, include = FALSE}
-
-{
-    # setting the local directory
-    setwd(dwfinrds)
+    # filtering covid database
+    LBASE1c = LBASE1 %>%
+      filter(covid == TRUE)
     
-    # reading FINAL database
-    BASE = readRDS("BASE_Essay_II.rds")
-  
-  {
-    # pre-organizing BASE2 database
-    BASE2 = BASE %>% filter(N == 2)
+} # organizing BASE1 and LBASE1
+
+{
+  # pre-organizing BASE2 database
+    BASE2 = BASE1 %>% filter(N == 2)
     
     # filtering leader and follower companies
     lider = BASE2 %>% filter(market == "lider")
@@ -1282,17 +1277,37 @@ BASE1 = BASE %>%
                              `0-5` = `0-5.x` - `0-5.y`,
                              `6-11` = `6-11.x` - `6-11.y`,
                              `12-17` = `12-17.x` - `12-17.y`,
-                             `18-23` = `18-23.x` - `18-23.y`) %>%
+                             `18-23` = `18-23.x` - `18-23.y`,
+                             m150RouteHHI = m150RouteHHI.x - m150RouteHHI.y, 
+                             m300RouteHHI = m300RouteHHI.x - m300RouteHHI.y,
+                             m500RouteHHI = m500RouteHHI.x - m500RouteHHI.y,
+                             m150DepHHI = m150DepHHI.x - m150DepHHI.y,
+                             m300DepHHI = m300DepHHI.x - m300DepHHI.y,
+                             m500DepHHI = m500DepHHI.x - m500DepHHI.y,
+                             m150seat_dem = m150seat_dem.x - m150seat_dem.y,
+                             m300seat_dem = m300seat_dem.x - m300seat_dem.y,
+                             m500seat_dem = m500seat_dem.x - m500seat_dem.y,
+                             m150price = m150price.x - m150price.y,
+                             m300price = m300price.x - m300price.y,
+                             m500price = m500price.x - m500price.y,
+                             m150RouteShare = m150RouteShare.x - m150RouteShare.y,
+                             m300RouteShare = m300RouteShare.x - m300RouteShare.y,
+                             m500RouteShare = m500RouteShare.x - m500RouteShare.y) %>%
       group_by(year, month, air_arr, air_dep) %>%
       select(year, month, air_arr, air_dep,
              seat_offer, seat_com, seat_bas, seat_dem, seat_free, seat_dir,
              take_off, aircraft, flight_hours, weight, lt_fuel,
              revenue, price, hubling, mail, free_luggage, paid_luggage,
              tx_seat, tx_payload, seat_fuel, payload_fuel, 
-             `0-5`, `6-11`, `12-17`, `18-23`)
+             `0-5`, `6-11`, `12-17`, `18-23`, 
+             m150RouteHHI, m300RouteHHI, m500RouteHHI, 
+             m150DepHHI, m300DepHHI, m500DepHHI,
+             m150seat_dem, m300seat_dem, m500seat_dem,
+             m150price, m300price, m500price,
+             m150RouteShare, m300RouteShare, m500RouteShare)
     
     # editing the CONTROL database (basic information of routes)
-    CONTROL = BASE %>% group_by(year, month, air_arr, air_dep) %>% 
+    CONTROL = BASE1 %>% group_by(year, month, air_arr, air_dep) %>% 
       dplyr::summarise(FreqHHI = mean(FreqHHI),
                        RouteHHI = mean(RouteHHI),
                        ArrHHI = mean(ArrHHI),
@@ -1300,7 +1315,10 @@ BASE1 = BASE %>%
                        distance = mean(distance),
                        distance2 = mean(distance2),
                        MMC = mean(MMC),
-                       connection = mean(connection))
+                       connection = mean(connection),
+                       nbank = mean(nbank),
+                       deposits = mean(deposits),
+                       credit_loan = mean(credit_loan))
     
     # merging CONTROL and BASE2 databases
     BASE2 = BASE2 %>% left_join(CONTROL, by = c("year", "month", "air_dep", "air_arr"))
@@ -1365,19 +1383,16 @@ BASE1 = BASE %>%
                                  TRUE ~ "ERRO")) %>% 
       mutate(CODE = paste0(air_arr, air_dep))
     
-    ## summarizing BASE2 and applying log 
+      # pre-organizing LBASE2 database
     LBASE2 = LBASE1 %>% filter(N == 2)
-    
-    # transforming inf data in 0
-    is.na(LBASE2) = sapply(LBASE2, is.infinite)
-    LBASE2[is.na(LBASE2)] = 0
     
     # filtering leader and follower companies
     lider = LBASE2 %>% filter(market == "lider")
     seguidora = LBASE2 %>% filter(market == "seguidora")
     
-    # merging leader and follower database with LBASE2
-    LBASE2 = left_join(lider, seguidora, by = c("year", "month", "air_arr", "air_dep")) 
+    # joining leader and follower companies with BASE2 database
+    LBASE2 = left_join(lider, seguidora, by = c("year", "month", "air_arr", "air_dep")) %>%
+      mutate(CODE = paste0(air_arr, air_dep))
     
     # calculating the difference of leader and follower companies data
     LBASE2 = LBASE2 %>% mutate(seat_offer = seat_offer.x - seat_offer.y,
@@ -1400,73 +1415,96 @@ BASE1 = BASE %>%
                              tx_seat = tx_seat.x - tx_seat.y,
                              tx_payload = tx_payload.x - tx_payload.y,
                              tx_dir = tx_dir.x - tx_dir.y,
-                             RouteShare = RouteShare.x - RouteShare.y,
                              seat_fuel = seat_fuel.x - seat_fuel.x,
                              payload_fuel = payload_fuel.x - payload_fuel.y,
                              `0-5` = `0-5.x` - `0-5.y`,
                              `6-11` = `6-11.x` - `6-11.y`,
                              `12-17` = `12-17.x` - `12-17.y`,
-                             `18-23` = `18-23.x` - `18-23.y`) %>%
+                             `18-23` = `18-23.x` - `18-23.y`,
+                             m150RouteHHI = m150RouteHHI.x - m150RouteHHI.y, 
+                             m300RouteHHI = m300RouteHHI.x - m300RouteHHI.y,
+                             m500RouteHHI = m500RouteHHI.x - m500RouteHHI.y,
+                             m150DepHHI = m150DepHHI.x - m150DepHHI.y,
+                             m300DepHHI = m300DepHHI.x - m300DepHHI.y,
+                             m500DepHHI = m500DepHHI.x - m500DepHHI.y,
+                             m150seat_dem = m150seat_dem.x - m150seat_dem.y,
+                             m300seat_dem = m300seat_dem.x - m300seat_dem.y,
+                             m500seat_dem = m500seat_dem.x - m500seat_dem.y,
+                             m150price = m150price.x - m150price.y,
+                             m300price = m300price.x - m300price.y,
+                             m500price = m500price.x - m500price.y,
+                             m150RouteShare = m150RouteShare.x - m150RouteShare.y,
+                             m300RouteShare = m300RouteShare.x - m300RouteShare.y,
+                             m500RouteShare = m500RouteShare.x - m500RouteShare.y) %>%
       group_by(year, month, air_arr, air_dep) %>%
       select(year, month, air_arr, air_dep,
              seat_offer, seat_com, seat_bas, seat_dem, seat_free, seat_dir,
              take_off, aircraft, flight_hours, weight, lt_fuel,
              revenue, price, hubling, mail, free_luggage, paid_luggage,
-             tx_seat, tx_payload, seat_fuel, payload_fuel, RouteShare,
-             `0-5`, `6-11`, `12-17`, `18-23`)
+             tx_seat, tx_payload, seat_fuel, payload_fuel, 
+             `0-5`, `6-11`, `12-17`, `18-23`, 
+             m150RouteHHI, m300RouteHHI, m500RouteHHI, 
+             m150DepHHI, m300DepHHI, m500DepHHI,
+             m150seat_dem, m300seat_dem, m500seat_dem,
+             m150price, m300price, m500price,
+             m150RouteShare, m300RouteShare, m500RouteShare)
     
     # editing the CONTROL database (basic information of routes)
-    CONTROL = BASE %>% group_by(year, month, air_arr, air_dep) %>% 
-      dplyr::summarise(FreqHHI = log(mean(FreqHHI)),
-                       RouteHHI = log(mean(RouteHHI)),
-                       ArrHHI = log(mean(ArrHHI)),
-                       DepHHI = log(mean(DepHHI)),
-                       MMC = log(mean(MMC)),
-                       connection = log(mean(connection)))
+    CONTROL = LBASE1 %>% group_by(year, month, air_arr, air_dep) %>% 
+      dplyr::summarise(FreqHHI = mean(FreqHHI),
+                       RouteHHI = mean(RouteHHI),
+                       ArrHHI = mean(ArrHHI),
+                       DepHHI = mean(DepHHI),
+                       distance = mean(distance),
+                       distance2 = mean(distance2),
+                       MMC = mean(MMC),
+                       connection = mean(connection),
+                       nbank = mean(nbank),
+                       deposits = mean(deposits),
+                       credit_loan = mean(credit_loan))
     
     # merging CONTROL and LBASE2 databases
     LBASE2 = LBASE2 %>% left_join(CONTROL, by = c("year", "month", "air_dep", "air_arr"))
     
     # editing dummy of tourist airports 
     LBASE2 = LBASE2 %>% mutate(Tourist = case_when(air_dep == "SBAR" ~ TRUE,
-                                                  air_dep == "SBCB" ~ TRUE,
-                                                  air_dep == "SBDB" ~ TRUE,
-                                                  air_dep == "SBFI" ~ TRUE,
-                                                  air_dep == "SBFN" ~ TRUE,
-                                                  air_dep == "SBFZ" ~ TRUE,
-                                                  air_dep == "SBGL" ~ TRUE,
-                                                  air_dep == "SBGV" ~ TRUE,
-                                                  air_dep == "SBIL" ~ TRUE,
-                                                  air_dep == "SBLE" ~ TRUE,
-                                                  air_dep == "SBPS" ~ TRUE,
-                                                  air_dep == "SBRF" ~ TRUE,
-                                                  air_dep == "SBVT" ~ TRUE,
-                                                  air_dep == "SBFL" ~ TRUE,
-                                                  TRUE ~ FALSE))
+                                                air_dep == "SBCB" ~ TRUE,
+                                                air_dep == "SBDB" ~ TRUE,
+                                                air_dep == "SBFI" ~ TRUE,
+                                                air_dep == "SBFN" ~ TRUE,
+                                                air_dep == "SBFZ" ~ TRUE,
+                                                air_dep == "SBGL" ~ TRUE,
+                                                air_dep == "SBGV" ~ TRUE,
+                                                air_dep == "SBIL" ~ TRUE,
+                                                air_dep == "SBLE" ~ TRUE,
+                                                air_dep == "SBPS" ~ TRUE,
+                                                air_dep == "SBRF" ~ TRUE,
+                                                air_dep == "SBVT" ~ TRUE,
+                                                air_dep == "SBFL" ~ TRUE,
+                                                TRUE ~ FALSE))
     # editing dummy of HUB airports 
     LBASE2 = LBASE2 %>% mutate(ArrHUB = case_when(air_arr == "SBSP" ~ TRUE,
-                                                  air_arr == "SBGL" ~ TRUE,
-                                                  air_arr == "SBRJ" ~ TRUE,
-                                                  air_arr == "SBGR" ~ TRUE,
-                                                  air_arr == "SBBR" ~ TRUE,
-                                                  air_arr == "SBFZ" ~ TRUE,
-                                                  air_arr == "SBRF" ~ TRUE,
-                                                  air_arr == "SBBH" ~ TRUE,
-                                                  air_arr == "SBKP" ~ TRUE,
-                                                  air_arr == "SBEG" ~ TRUE,
-                                                  TRUE ~ FALSE),
-                               DepHUB = case_when(air_arr == "SBSP" ~ TRUE,
-                                                  air_arr == "SBGL" ~ TRUE,
-                                                  air_arr == "SBRJ" ~ TRUE,
-                                                  air_arr == "SBGR" ~ TRUE,
-                                                  air_arr == "SBBR" ~ TRUE,
-                                                  air_arr == "SBFZ" ~ TRUE,
-                                                  air_arr == "SBRF" ~ TRUE,
-                                                  air_arr == "SBBH" ~ TRUE,
-                                                  air_arr == "SBKP" ~ TRUE,
-                                                  air_arr == "SBEG" ~ TRUE,
-                                                  TRUE ~ FALSE)) %>%
-      mutate(CODE = paste0(air_arr,air_dep))
+                                                air_arr == "SBGL" ~ TRUE,
+                                                air_arr == "SBRJ" ~ TRUE,
+                                                air_arr == "SBGR" ~ TRUE,
+                                                air_arr == "SBBR" ~ TRUE,
+                                                air_arr == "SBFZ" ~ TRUE,
+                                                air_arr == "SBRF" ~ TRUE,
+                                                air_arr == "SBBH" ~ TRUE,
+                                                air_arr == "SBKP" ~ TRUE,
+                                                air_arr == "SBEG" ~ TRUE,
+                                                TRUE ~ FALSE),
+                             DepHUB = case_when(air_arr == "SBSP" ~ TRUE,
+                                                air_arr == "SBGL" ~ TRUE,
+                                                air_arr == "SBRJ" ~ TRUE,
+                                                air_arr == "SBGR" ~ TRUE,
+                                                air_arr == "SBBR" ~ TRUE,
+                                                air_arr == "SBFZ" ~ TRUE,
+                                                air_arr == "SBRF" ~ TRUE,
+                                                air_arr == "SBBH" ~ TRUE,
+                                                air_arr == "SBKP" ~ TRUE,
+                                                air_arr == "SBEG" ~ TRUE,
+                                                TRUE ~ FALSE))
     
     # creating covid dummy
     LBASE2 = LBASE2 %>%
@@ -1486,24 +1524,28 @@ BASE1 = BASE %>%
                                  month %in% c(4,5,6) ~ "II",
                                  month %in% c(7,8,9) ~ "III",
                                  month %in% c(10,11,12) ~ "IV",
-                                 TRUE ~ "ERRO")) %>%
+                                 TRUE ~ "ERRO")) %>% 
       mutate(CODE = paste0(air_arr, air_dep))
     
-    } # organizing BASE2 and LBASE2 databases
-  
-} # Transforming final databases - quick cleaning
-
+    # transforming inf to 0
+    is.na(LBASE2) = sapply(LBASE2, is.infinite)
+    LBASE2[is.na(LBASE2)] = 0
+    
+    # filtering covid database
+    LBASE2c = LBASE2 %>%
+      filter(covid == TRUE)
+    
+} # organizing BASE2 and LBASE2
+    
 {
-  # setting the directory  
-  setwd(dwfinrds) 
-  
+  # setting the directory and saving databases
+  setwd(dwfinrds)
   saveRDS(BASE1, "BASE1_Essay_II.rds")
-  saveRDS(BASE2, "BASE2_Essay_II.rds")
   saveRDS(LBASE1, "LBASE1_Essay_II.rds")
+  saveRDS(LBASE1c, "LBASE1c_Essay_II.rds")
   saveRDS(LBASE2, "LBASE2_Essay_II.rds")
-  saveRDS(BASE, "BASE_Essay_II.rds")
+  saveRDS(LBASE2c, "LBASE2c_Essay_II.rds")
+
 } # saving databases
-
+ 
 ```
-
-
