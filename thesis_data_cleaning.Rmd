@@ -104,7 +104,6 @@ dwestrds = paste0(dwdir, "/data/instrument/estban/rds")
     # rename
     COMBINADA = files
     
-    
   } # Join databases
   
   # Dropping unnecessary databases
@@ -193,8 +192,7 @@ dwestrds = paste0(dwdir, "/data/instrument/estban/rds")
     # rename
     BASICA = files
     
-    
-  } # Join databases
+} # Join databases
   
   # Dropping unnecessary databases
   remove(list = c("files", "file_names"))
@@ -273,8 +271,7 @@ dwestrds = paste0(dwdir, "/data/instrument/estban/rds")
     # Saving a single object to a file
     saveRDS(PRECOS, paste(file, ".rds"))
     
-    
-  } # Creating looping for .txt files
+} # Creating looping for .txt files
   
   {
     
@@ -298,7 +295,7 @@ dwestrds = paste0(dwdir, "/data/instrument/estban/rds")
     # rename
     PRICES = files
     
-  } # Join databases
+} # Join databases
   
   # Dropping unnecessary databases
   remove(list = c("files", "file_names"))
@@ -314,7 +311,6 @@ dwestrds = paste0(dwdir, "/data/instrument/estban/rds")
   # Saving a single object to a file
   saveRDS(PRICES_Essay_II, "PRICES_Essay_II.rds")
 
-  
 } # Transforming Prices database
 
 {
@@ -357,6 +353,9 @@ dwestrds = paste0(dwdir, "/data/instrument/estban/rds")
                      seat_com = sum(seat_com),
                      seat_bas = sum(seat_bas)) %>%
     mutate(taxa = seat_com / seat_bas) %>%
+    mutate(taxa = case_when(taxa < 0 ~ 0,
+                            taxa > 1 ~ 1,
+                            TRUE ~ taxa)) %>%
     filter(taxa > 0 & taxa <= 1) %>%
     mutate(air_dep = sg_icao_origem, air_arr = sg_icao_destino, airline = sg_empresa_icao)
   
@@ -545,7 +544,8 @@ LENGTH = FINAL %>% group_by(month, year) %>%
                                TRUE ~ tx_seat))
     
   # importing IPCA database
-  IPCA = read_delim(url("https://raw.githubusercontent.com/jrtonin/thesis_data/main/data/parameter/IPCA.csv"), 
+  IPCA = 
+    read_delim(url("https://raw.githubusercontent.com/jrtonin/thesis_data/main/data/parameter/IPCA.csv"), 
                     ";", escape_double = FALSE, 
                     locale = locale(decimal_mark = ",",
                                     grouping_mark = "."), 
