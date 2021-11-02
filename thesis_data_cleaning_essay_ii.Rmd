@@ -1194,7 +1194,7 @@ BASEF = BASE1 %>%
 id = as.vector(BASEF$id)
 
 # editing looping 
-for (file in 1:30063){ 
+for (file in 1:31203){ 
 
   # filtering airline variable
   cia = BASEF %>% filter(id == id[file])
