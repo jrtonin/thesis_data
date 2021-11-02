@@ -1162,7 +1162,8 @@ BASE1 = BASE %>%
          m500price = case_when(m500price == 0 ~ price, TRUE ~ m500price),
          m150RouteShare = case_when(m150RouteShare == 0 ~ RouteShare, TRUE ~ m150RouteShare),
          m300RouteShare = case_when(m300RouteShare == 0 ~ RouteShare, TRUE ~ m300RouteShare),
-         m500RouteShare = case_when(m500RouteShare == 0 ~ RouteShare, TRUE ~ m500RouteShare))
+         m500RouteShare = case_when(m500RouteShare == 0 ~ RouteShare, TRUE ~ m500RouteShare)) %>%
+  
 
     # transforming inf to 0
     is.na(BASE1) = sapply(BASE1, is.infinite)
